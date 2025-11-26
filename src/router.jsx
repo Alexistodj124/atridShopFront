@@ -11,66 +11,60 @@ import Reportes from './pages/Reportes.jsx'
 import Clientes from './pages/Clientes.jsx'
 import { RequireAuth, RequireAdmin } from './ProtectedRoutes.jsx'
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      element: <AppLayout />,
+      children: [
+        {
+          index: true,
+          element: (
+            <RequireAuth>
+              <Home />
+            </RequireAuth>
+          ),
+        },
+        { path: 'signin', element: <SignIn /> },
+        {
+          path: 'ventas',
+          element: (
+            <RequireAuth>
+              <Ventas />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'compras',
+          element: (
+            <RequireAdmin>
+              <Compras />
+            </RequireAdmin>
+          ),
+        },
+        {
+          path: 'reportes',
+          element: (
+            <RequireAdmin>
+              <Reportes />
+            </RequireAdmin>
+          ),
+        },
+        {
+          path: 'clientes',
+          element: (
+            <RequireAdmin>
+              <Clientes />
+            </RequireAdmin>
+          ),
+        },
+        { path: '*', element: <NotFound /> },
+      ],
+    },
+  ],
   {
-    element: <AppLayout />,
-    children: [
-      // Home: puedes dejarla libre o también protegerla
-      {
-        index: true,
-        element: (
-          <RequireAuth>
-            <Home />
-          </RequireAuth>
-        ),
-      },
-
-      // Login SIEMPRE libre
-      { path: 'signin', element: <SignIn /> },
-
-      // Solo logueados (cajeras / usuarias normales)
-      {
-        path: 'ventas',
-        element: (
-          <RequireAuth>
-            <Ventas />
-          </RequireAuth>
-        ),
-      },
-
-      // Solo ADMIN (acceso a todo lo demás)
-      {
-        path: 'compras',
-        element: (
-          <RequireAdmin>
-            <Compras />
-          </RequireAdmin>
-        ),
-      },
-      {
-        path: 'reportes',
-        element: (
-          <RequireAdmin>
-            <Reportes />
-          </RequireAdmin>
-        ),
-      },
-      {
-        path: 'clientes',
-        element: (
-          <RequireAdmin>
-            <Clientes />
-          </RequireAdmin>
-        ),
-      },
-
-      { path: '*', element: <NotFound /> },
-    ],
-  },
-],
-{
-  basename: '/AMBOUTIQUE',
-}                             
+    basename: '/AMBOUTIQUE',
+  }
 )
 
 export default router
+
