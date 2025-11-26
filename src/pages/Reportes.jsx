@@ -12,37 +12,6 @@ import { API_BASE_URL } from '../config/api'
 dayjs.extend(isBetween)
 
 // --- Datos de ejemplo (luego los reemplazas por tu API/DB) ---
-const ORDENES = [
-  {
-    id: 'ORD-001',
-    fecha: '2025-11-10T10:10:00Z',
-    cliente: { nombre: 'Ana López', telefono: '+502 5555 1111' },
-    items: [
-      { id: 1, name: 'Shampoo pH Neutro 1L', sku: 'SH-001', price: 89.9, qty: 1 },
-      { id: 2, name: 'Toalla Secado 1200gsm', sku: 'TS-1200', price: 99.0, qty: 2 },
-    ],
-    empleada: 'Ana',
-  },
-  {
-    id: 'ORD-002',
-    fecha: '2025-11-11T16:40:00Z',
-    cliente: { nombre: 'Carlos Méndez', telefono: '+502 5555 2222' },
-    items: [
-      { id: 3, name: 'Cera Sintética 500ml', sku: 'CE-500', price: 129.0, qty: 1 },
-    ],
-    empleada: 'María',
-  },
-  {
-    id: 'ORD-003',
-    fecha: '2025-11-12T03:20:00Z',
-    cliente: { nombre: 'María Díaz', telefono: '+502 5555 3333' },
-    items: [
-      { id: 4, name: 'Guante Microfibra Premium', sku: 'GM-010', price: 59.5, qty: 3 },
-      { id: 5, name: 'Ambientador New Car', sku: 'AN-001', price: 25.0, qty: 2 },
-    ],
-    empleada: 'Lucía',
-  },
-]
 
 // Util: calcular total
 function calcTotal(items) {
