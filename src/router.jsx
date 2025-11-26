@@ -67,6 +67,10 @@ const router = createBrowserRouter([
       { path: '*', element: <NotFound /> },
     ],
   },
-])
+],
+{
+  basename: '/AMBOUTIQUE',
+}                             
+)
 
 export default router
