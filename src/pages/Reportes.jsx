@@ -29,22 +29,19 @@ export default function Reportes() {
   ])
 
   const filtered = React.useMemo(() => {
-    // si aún no hay órdenes del backend, usa los mocks
-    const source = ordenes.length ? ordenes : ORDENES
-
-    // Filtro por empleada seleccionada
-    if (!empleadaSel) return source
-
+  // usa SOLO backend
+    const source = ordenes
+  
+    // si no hay empleada seleccionada, devuelve todas  
     return source.filter(o => {
-      // en mocks: o.empleada es string
-      // en backend: o.empleada es { id, nombre, telefono }
       const nombreEmp = typeof o.empleada === 'string'
         ? o.empleada
         : o.empleada?.nombre
-
+  
       return nombreEmp === empleadaSel
     })
-  }, [ordenes, empleadaSel])
+  }, [ordenes])
+
 
   // 🔹 GET /ordenes?inicio=...&fin=...
   const cargarOrdenes = async (inicioIso, finIso) => {
