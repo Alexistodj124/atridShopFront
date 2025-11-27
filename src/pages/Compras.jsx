@@ -322,8 +322,11 @@ export default function NuevaCompra() {
 
       // 🔹 limpiar formulario
       const initialProducto = {
+        sku: '',
+        tiendaId: '',
         marcaId: '',
         categoriaId: '',
+        tallaId: '',
         descripcion: '',
         costo: 0,
         precio: 0,
@@ -332,7 +335,7 @@ export default function NuevaCompra() {
       }
       setProducto(initialProducto)
 
-      setPreview(null)
+      setPreview('')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
