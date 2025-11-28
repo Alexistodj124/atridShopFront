@@ -1,8 +1,9 @@
 import * as React from 'react'
 import {
   Box, Paper, Typography, Stack, Divider, TextField, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip, MenuItem, InputAdornment
+  TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip, MenuItem, InputAdornment, IconButton
 } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/Delete'
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -15,31 +16,42 @@ dayjs.extend(isBetween)
 
 // Util: calcular total
 function calcTotal(items) {
-  return items.reduce((s, it) => s + it.price * it.qty, 0)
+  return items.reduce((s, it) => {
+    const price = it.price ?? it.precio_unitario ?? it.producto?.precio ?? 0
+    const qty = it.qty ?? it.cantidad ?? 1
+    return s + price * qty
+  }, 0)
+}
+
+// Util: calcular ganancia de una lista de items
+function calcGanancia(items) {
+  return items.reduce((acc, it) => {
+    const price = it.price ?? it.precio_unitario ?? 0
+    const qty = it.qty ?? it.cantidad ?? 1
+    const costoUnit =
+      it.costo_unitario ??
+      it.costo ??
+      it.producto?.costo ??
+      0
+    return acc + (price - costoUnit) * qty
+  }, 0)
 }
 
 export default function Reportes() {
   const [ordenSel, setOrdenSel] = React.useState(null)
-  const [empleadas, setEmpleadas] = React.useState([])
   const [ordenes, setOrdenes] = React.useState([])
-  const [empleadaSel, setEmpleadaSel] = React.useState('')
     const [range, setRange] = React.useState([
     dayjs().startOf('month'),
     dayjs().endOf('day'),
   ])
+  const [deletingId, setDeletingId] = React.useState(null)
 
   const filtered = React.useMemo(() => {
   // usa SOLO backend
     const source = ordenes
   
     // si no hay empleada seleccionada, devuelve todas  
-    return source.filter(o => {
-      const nombreEmp = typeof o.empleada === 'string'
-        ? o.empleada
-        : o.empleada?.nombre
-  
-      return nombreEmp === empleadaSel
-    })
+    return source
   }, [ordenes])
 
 
@@ -60,27 +72,32 @@ export default function Reportes() {
     }
   }
 
-  const cargarEmpleadas = async () => {
+  const handleDeleteOrden = async (id) => {
+    if (!id) return
+    const confirmed = window.confirm('¿Eliminar esta orden?')
+    if (!confirmed) return
+
     try {
-      const res = await fetch(`${API_BASE_URL}/empleadas`)
-      if (!res.ok) throw new Error('Error al obtener empleadas')
-      const data = await res.json()
-      setEmpleadas(data)
+      setDeletingId(id)
+      const res = await fetch(`${API_BASE_URL}/ordenes/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Error al eliminar orden')
+      setOrdenes((prev) => prev.filter((o) => o.id !== id))
+      if (ordenSel?.id === id) setOrdenSel(null)
     } catch (err) {
       console.error(err)
+    } finally {
+      setDeletingId(null)
     }
-  }
-  function calcTotal(items) {
-    return items.reduce((s, it) => {
-      const price = it.price ?? it.precio_unitario ?? 0   // mock vs backend
-      const qty   = it.qty   ?? it.cantidad       ?? 1
-      return s + price * qty
-    }, 0)
   }
 
 
   const totalPeriodo = filtered.reduce(
     (acc, o) => acc + calcTotal(o.items || []),
+    0
+  )
+
+  const gananciaPeriodo = filtered.reduce(
+    (acc, o) => acc + calcGanancia(o.items || []),
     0
   )
 
@@ -90,11 +107,6 @@ export default function Reportes() {
     () => (porcentajeComision ? (totalPeriodo * porcentajeComision) / 100 : 0),
     [totalPeriodo, porcentajeComision]
   )
-
-    // 🔹 Cargar empleadas una vez
-  React.useEffect(() => {
-    cargarEmpleadas()
-  }, [])
 
   // 🔹 Cada vez que cambia el rango, pedir órdenes al backend
   React.useEffect(() => {
@@ -140,9 +152,13 @@ export default function Reportes() {
               color="primary"
               sx={{ fontWeight: 600 }}
             />
+            <Chip
+              label={`Ganancia en el periodo: Q ${gananciaPeriodo.toFixed(2)}`}
+              color="success"
+              sx={{ fontWeight: 600 }}
+            />
           </Stack>
 
-          {/* Nueva fila: empleada + porcentaje + total comisión */}
           
         </Paper>
 
@@ -154,6 +170,7 @@ export default function Reportes() {
                 <TableCell>No. Orden</TableCell>
                 <TableCell>Cliente</TableCell>
                 <TableCell align="right">Total</TableCell>
+                <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -170,11 +187,24 @@ export default function Reportes() {
                   <TableCell align="right">
                     Q {calcTotal(o.items || []).toFixed(2)}
                   </TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteOrden(o.id)
+                      }}
+                      disabled={deletingId === o.id}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4}>
+                  <TableCell colSpan={5}>
                     <Typography color="text.secondary" align="center">
                       No hay ventas en el rango seleccionado
                     </Typography>
@@ -261,6 +291,15 @@ export default function Reportes() {
             </Table>
           </DialogContent>
           <DialogActions>
+            {ordenSel && (
+              <Button
+                color="error"
+                onClick={() => handleDeleteOrden(ordenSel.id)}
+                disabled={deletingId === ordenSel.id}
+              >
+                Eliminar
+              </Button>
+            )}
             <Button onClick={() => setOrdenSel(null)}>Cerrar</Button>
           </DialogActions>
         </Dialog>
