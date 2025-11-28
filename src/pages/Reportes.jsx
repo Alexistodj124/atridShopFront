@@ -14,27 +14,36 @@ dayjs.extend(isBetween)
 
 // --- Datos de ejemplo (luego los reemplazas por tu API/DB) ---
 
+// Utilidades de totales
+const getItemPrice = (item) => {
+  const raw = item?.price ?? item?.precio_unitario ?? item?.producto?.precio ?? 0
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : 0
+}
+
+const getItemCost = (item) => {
+  const raw = item?.costo_unitario ?? item?.costo ?? item?.producto?.costo ?? 0
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : 0
+}
+
+const getItemQty = (item) => {
+  const raw = item?.qty ?? item?.cantidad ?? 1
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : 0
+}
+
 // Util: calcular total
 function calcTotal(items) {
-  return items.reduce((s, it) => {
-    const price = it.price ?? it.precio_unitario ?? it.producto?.precio ?? 0
-    const qty = it.qty ?? it.cantidad ?? 1
-    return s + price * qty
-  }, 0)
+  return items.reduce((s, it) => s + getItemPrice(it) * getItemQty(it), 0)
 }
 
 // Util: calcular ganancia de una lista de items
 function calcGanancia(items) {
-  return items.reduce((acc, it) => {
-    const price = it.price ?? it.precio_unitario ?? 0
-    const qty = it.qty ?? it.cantidad ?? 1
-    const costoUnit =
-      it.costo_unitario ??
-      it.costo ??
-      it.producto?.costo ??
-      0
-    return acc + (price - costoUnit) * qty
-  }, 0)
+  return items.reduce(
+    (acc, it) => acc + (getItemPrice(it) - getItemCost(it)) * getItemQty(it),
+    0
+  )
 }
 
 export default function Reportes() {
