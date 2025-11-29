@@ -33,17 +33,31 @@ const getItemQty = (item) => {
   return Number.isFinite(num) ? num : 0
 }
 
-// Util: calcular total
-function calcTotal(items) {
-  return items.reduce((s, it) => s + getItemPrice(it) * getItemQty(it), 0)
+const normalizeNumber = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+const getOrdenDescuento = (orden) => normalizeNumber(orden?.descuento ?? orden?.discount ?? 0)
+const calcSubtotal = (items = []) =>
+  items.reduce((s, it) => s + getItemPrice(it) * getItemQty(it), 0)
+const calcCostoTotal = (items = []) =>
+  items.reduce((s, it) => s + getItemCost(it) * getItemQty(it), 0)
+
+// Util: calcular total (restando el descuento de la orden si existe)
+function calcTotal(items = [], descuento = 0) {
+  const subtotal = calcSubtotal(items)
+  const desc = Math.max(normalizeNumber(descuento), 0)
+  const neto = subtotal - desc
+  return neto < 0 ? 0 : neto
 }
 
 // Util: calcular ganancia de una lista de items
-function calcGanancia(items) {
-  return items.reduce(
-    (acc, it) => acc + (getItemPrice(it) - getItemCost(it)) * getItemQty(it),
-    0
-  )
+function calcGanancia(items = [], descuento = 0) {
+  const subtotal = calcSubtotal(items)
+  const costoTotal = calcCostoTotal(items)
+  const desc = Math.max(normalizeNumber(descuento), 0)
+  return subtotal - costoTotal - desc
 }
 
 export default function Reportes() {
@@ -81,18 +95,50 @@ export default function Reportes() {
     }
   }
 
-  const handleDeleteOrden = async (id) => {
+  const restockOrden = async (orden) => {
+    if (!orden?.items?.length) return
+
+    const items = orden.items
+      .map((it) => {
+        const productoId = it.producto_id ?? it.producto?.id
+        if (!productoId) return null
+        return {
+          producto_id: productoId,
+          cantidad: getItemQty(it),
+        }
+      })
+      .filter(Boolean)
+
+    if (items.length === 0) return
+
+    const res = await fetch(`${API_BASE_URL}/inventario/devolver`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    })
+
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || 'Error al devolver inventario')
+    }
+  }
+
+  const handleDeleteOrden = async (orden) => {
+    const id = orden?.id
     if (!id) return
     const confirmed = window.confirm('¿Eliminar esta orden?')
     if (!confirmed) return
 
     try {
       setDeletingId(id)
+      await restockOrden(orden)
+
       const res = await fetch(`${API_BASE_URL}/ordenes/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Error al eliminar orden')
       setOrdenes((prev) => prev.filter((o) => o.id !== id))
       if (ordenSel?.id === id) setOrdenSel(null)
     } catch (err) {
+      alert('No se pudo eliminar la orden o devolver inventario. Revisa la consola.')
       console.error(err)
     } finally {
       setDeletingId(null)
@@ -101,12 +147,12 @@ export default function Reportes() {
 
 
   const totalPeriodo = filtered.reduce(
-    (acc, o) => acc + calcTotal(o.items || []),
+    (acc, o) => acc + calcTotal(o.items || [], getOrdenDescuento(o)),
     0
   )
 
   const gananciaPeriodo = filtered.reduce(
-    (acc, o) => acc + calcGanancia(o.items || []),
+    (acc, o) => acc + calcGanancia(o.items || [], getOrdenDescuento(o)),
     0
   )
 
@@ -116,6 +162,10 @@ export default function Reportes() {
     () => (porcentajeComision ? (totalPeriodo * porcentajeComision) / 100 : 0),
     [totalPeriodo, porcentajeComision]
   )
+
+  const descuentoOrdenSel = getOrdenDescuento(ordenSel)
+  const subtotalOrdenSel = calcSubtotal(ordenSel?.items || [])
+  const totalOrdenSel = calcTotal(ordenSel?.items || [], descuentoOrdenSel)
 
   // 🔹 Cada vez que cambia el rango, pedir órdenes al backend
   React.useEffect(() => {
@@ -194,7 +244,7 @@ export default function Reportes() {
                   <TableCell>{o.codigo ?? o.id}</TableCell>
                   <TableCell>{o.cliente?.nombre}</TableCell>
                   <TableCell align="right">
-                    Q {calcTotal(o.items || []).toFixed(2)}
+                    Q {calcTotal(o.items || [], getOrdenDescuento(o)).toFixed(2)}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton
@@ -202,7 +252,7 @@ export default function Reportes() {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteOrden(o.id)
+                        handleDeleteOrden(o)
                       }}
                       disabled={deletingId === o.id}
                     >
@@ -266,7 +316,7 @@ export default function Reportes() {
                   }
 
                   // 🔹 SKU según tipo
-                  let sku = it.producto.sku || ''
+                  let sku = it.producto?.sku || ''
 
                   const price =
                     it.price ??                        // mock
@@ -290,10 +340,28 @@ export default function Reportes() {
 
                 <TableRow>
                   <TableCell colSpan={4} align="right" sx={{ fontWeight: 600 }}>
-                    Total
+                    Subtotal
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>
-                    Q {ordenSel ? calcTotal(ordenSel.items).toFixed(2) : '0.00'}
+                    Q {subtotalOrdenSel.toFixed(2)}
+                  </TableCell>
+                </TableRow>
+                {descuentoOrdenSel > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} align="right" sx={{ fontWeight: 600 }}>
+                      Descuento
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      -Q {descuentoOrdenSel.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell colSpan={4} align="right" sx={{ fontWeight: 700 }}>
+                    Total
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Q {totalOrdenSel.toFixed(2)}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -303,7 +371,7 @@ export default function Reportes() {
             {ordenSel && (
               <Button
                 color="error"
-                onClick={() => handleDeleteOrden(ordenSel.id)}
+                onClick={() => handleDeleteOrden(ordenSel)}
                 disabled={deletingId === ordenSel.id}
               >
                 Eliminar

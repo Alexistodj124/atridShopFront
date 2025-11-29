@@ -52,6 +52,7 @@ export default function Inventory() {
   const [tipoPOSset, setTipoPOS] = React.useState('all')
   const [category, setCategory] = React.useState('all')
   const [cart, setCart] = React.useState([])
+  const [discount, setDiscount] = React.useState('')
 
   // Dialog de datos del cliente
   const [openDialog, setOpenDialog] = React.useState(false)
@@ -285,7 +286,13 @@ export default function Inventory() {
 
   const removeFromCart = (id) => setCart(prev => prev.filter(p => p.id !== id))
 
-  const total = cart.reduce((sum, p) => sum + p.precio * p.qty, 0)
+  const subtotal = cart.reduce((sum, p) => sum + p.precio * p.qty, 0)
+  const discountValue = React.useMemo(() => {
+    const parsed = parseFloat(discount)
+    if (Number.isNaN(parsed) || parsed < 0) return 0
+    return Math.min(parsed, subtotal)
+  }, [discount, subtotal])
+  const totalWithDiscount = subtotal - discountValue
 
   const handleOpenCheckout = () => {
     if (cart.length === 0) {
@@ -354,6 +361,8 @@ export default function Inventory() {
       fecha: new Date().toISOString(),
       cliente: clientePayload,
       items: itemsPayload,
+      descuento: discountValue,
+      total: totalWithDiscount,
     }
 
     console.log('Payload para /ordenes:', body)
@@ -391,7 +400,14 @@ export default function Inventory() {
       const ticketClienteNombre   = clientePayload.nombre ?? clienteSeleccionado?.nombre ?? ''
       const ticketClienteTelefono = clientePayload.telefono ?? clienteSeleccionado?.telefono ?? ''
 
-      const total = cart.reduce((sum, it) => sum + it.precio * it.qty, 0)
+      const subtotalTicket = cart.reduce((sum, it) => sum + it.precio * it.qty, 0)
+      const discountApplied = Math.min(
+        Math.max(parseFloat(discount) || 0, 0),
+        subtotalTicket
+      )
+      const totalConDescuento = subtotalTicket - discountApplied
+      const discountFromBackend = typeof data.descuento === 'number' ? data.descuento : discountApplied
+      const totalFromBackend = typeof data.total === 'number' ? data.total : totalConDescuento
 
       const itemsHtml = cart.map(it => `
         <div style="margin-bottom:3px">
@@ -448,8 +464,14 @@ export default function Inventory() {
               <hr/>
               <div style="display:flex;justify-content:space-between;font-weight:bold">
                 <span>Total</span>
-                <span>Q ${total.toFixed(2)}</span>
+                <span>Q ${totalFromBackend.toFixed(2)}</span>
               </div>
+              ${discountFromBackend > 0
+                ? `<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px">
+                    <span>Descuento</span>
+                    <span>-Q ${discountFromBackend.toFixed(2)}</span>
+                  </div>`
+                : ''}
               <div style="text-align:center;margin-top:6px">
                 ¡Gracias por su compra!
               </div>
@@ -480,6 +502,7 @@ export default function Inventory() {
       setClienteSeleccionado(null)
       setEsClienteExistente(false)
       setCart([])
+      setDiscount('')
 
     } catch (err) {
       console.error('Error de red al crear orden:', err)
@@ -650,18 +673,35 @@ export default function Inventory() {
         <Divider sx={{ mt: 1, mb: 2 }} />
 
         <Box sx={{ textAlign: 'right' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            Total: Q {total.toFixed(2)}
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={cart.length === 0}
-            sx={{ mt: 1 }}
-            onClick={handleOpenCheckout}
-          >
-            Finalizar compra
-          </Button>
+          <Stack spacing={1} alignItems="flex-end">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Total: Q {totalWithDiscount.toFixed(2)}
+              </Typography>
+              <TextField
+                size="small"
+                label="Descuento"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                type="number"
+                inputProps={{ min: 0, step: '0.01' }}
+                sx={{ width: 140 }}
+              />
+            </Stack>
+            {discountValue > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Subtotal Q {subtotal.toFixed(2)} - Descuento Q {discountValue.toFixed(2)}
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={cart.length === 0}
+              onClick={handleOpenCheckout}
+            >
+              Finalizar compra
+            </Button>
+          </Stack>
         </Box>
       </Box>
 
