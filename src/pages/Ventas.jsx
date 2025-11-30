@@ -67,7 +67,7 @@ export default function Inventory() {
   const [empleadas, setEmpleadas] = React.useState([])
 
   const [clientes, setClientes] = React.useState([])          // lista desde el backend
-  const [cliente, setCliente] = React.useState({ nombre: '', telefono: '' })
+  const [cliente, setCliente] = React.useState({ nombre: '', telefono: '', email: '', nit: '' })
   const [esClienteExistente, setEsClienteExistente] = React.useState(false)
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState(null)
 
@@ -339,12 +339,23 @@ export default function Inventory() {
     
     // 1) Cliente: existente o nuevo
     let clientePayload
+    const nombreTrim = (cliente.nombre || '').trim()
+    const telTrim = (cliente.telefono || '').trim()
+    const emailTrim = (cliente.email || '').trim()
+    const nitTrim = (cliente.nit || '').trim()
+
     if (esClienteExistente && clienteSeleccionado?.id) {
-      clientePayload = { id: clienteSeleccionado.id }
+      clientePayload = {
+        id: clienteSeleccionado.id,
+        email: emailTrim || clienteSeleccionado.email || null,
+        nit: nitTrim || clienteSeleccionado.nit || null,
+      }
     } else {
       clientePayload = {
-        nombre: cliente.nombre,
-        telefono: cliente.telefono,
+        nombre: nombreTrim,
+        telefono: telTrim,
+        email: emailTrim || null,
+        nit: nitTrim || null,
       }
     }
 
@@ -450,7 +461,7 @@ export default function Inventory() {
           <body>
             <div class="ticket">
               <div style="text-align:center;margin-bottom:4px">
-                <div style="font-weight:bold">Kiara</div>
+                <div style="font-weight:bold">AM Boutique</div>
                 <div>Ticket: ${ticketCodigo}</div>
                 <div>${new Date(ticketFecha).toLocaleString()}</div>
               </div>
@@ -498,7 +509,7 @@ export default function Inventory() {
         severity: 'success',
       })
       setOpenDialog(false)
-      setCliente({ nombre: '', telefono: '' })
+      setCliente({ nombre: '', telefono: '', email: '', nit: '' })
       setClienteSeleccionado(null)
       setEsClienteExistente(false)
       setCart([])
@@ -725,7 +736,7 @@ export default function Inventory() {
                 setClienteSeleccionado(null)
                 setEsClienteExistente(false)
                 // si quieres, limpiar tel cuando cambia el nombre:
-                setCliente(prev => ({ ...prev, telefono: '' }))
+                setCliente(prev => ({ ...prev, telefono: '', email: '', nit: '' }))
               }}
               onChange={(event, newValue) => {
                 // cuando selecciona algo del dropdown o “confirma” texto
@@ -733,13 +744,18 @@ export default function Inventory() {
                   // limpiaron el campo
                   setClienteSeleccionado(null)
                   setEsClienteExistente(false)
-                  setCliente(prev => ({ ...prev, telefono: '' }))
+                  setCliente(prev => ({ ...prev, telefono: '', email: '', nit: '' }))
                   return
                 }
 
                 if (typeof newValue === 'string') {
                   // nombre escrito a mano, no de la lista
-                  setCliente(prev => ({ ...prev, nombre: newValue }))
+                  setCliente({
+                    nombre: newValue,
+                    telefono: '',
+                    email: '',
+                    nit: '',
+                  })
                   setClienteSeleccionado(null)
                   setEsClienteExistente(false)
                   return
@@ -750,6 +766,8 @@ export default function Inventory() {
                 setCliente({
                   nombre: newValue.nombre,
                   telefono: newValue.telefono ?? '',
+                  email: newValue.email ?? '',
+                  nit: newValue.nit ?? '',
                 })
                 setEsClienteExistente(true)
               }}
@@ -778,6 +796,27 @@ export default function Inventory() {
                 placeholder="+502 5555 5555"
               />
             )}
+
+            <TextField
+              label="Correo electrónico"
+              value={cliente.email}
+              onChange={(e) =>
+                setCliente(prev => ({ ...prev, email: e.target.value }))
+              }
+              fullWidth
+              type="email"
+              placeholder="cliente@correo.com"
+            />
+
+            <TextField
+              label="NIT"
+              value={cliente.nit}
+              onChange={(e) =>
+                setCliente(prev => ({ ...prev, nit: e.target.value }))
+              }
+              fullWidth
+              placeholder="CF o número de NIT"
+            />
             {/* <TextField
               autoFocus
               select
