@@ -98,28 +98,27 @@ export default function Reportes() {
   const restockOrden = async (orden) => {
     if (!orden?.items?.length) return
 
-    const items = orden.items
-      .map((it) => {
-        const productoId = it.producto_id ?? it.producto?.id
-        if (!productoId) return null
-        return {
-          producto_id: productoId,
-          cantidad: getItemQty(it),
-        }
+    // Para cada item, sumamos la cantidad vendida de vuelta al stock del producto
+    for (const it of orden.items) {
+      const productoId = it.producto_id ?? it.producto?.id
+      if (!productoId) continue
+
+      const qty = getItemQty(it)
+      const cantidadActual = Number(it.producto?.cantidad ?? 0)
+      const nuevaCantidad = Number.isFinite(cantidadActual)
+        ? cantidadActual + qty
+        : qty
+
+      const res = await fetch(`${API_BASE_URL}/productos/${productoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cantidad: nuevaCantidad }),
       })
-      .filter(Boolean)
 
-    if (items.length === 0) return
-
-    const res = await fetch(`${API_BASE_URL}/inventario/devolver`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items }),
-    })
-
-    if (!res.ok) {
-      const msg = await res.text()
-      throw new Error(msg || 'Error al devolver inventario')
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || `Error al devolver inventario del producto ${productoId}`)
+      }
     }
   }
 
