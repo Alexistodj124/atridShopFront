@@ -58,6 +58,8 @@ export default function Clientes() {
           id: key,
           nombre: cli.nombre,
           telefono: cli.telefono,
+          email: cli.email,
+          nit: cli.nit,
           ordenes: [o],
           total: totalOrden,
           ultima: o.fecha,
@@ -170,6 +172,16 @@ export default function Clientes() {
                 {clienteSel.telefono} — Total gastado: Q {clienteSel.total.toFixed(2)}
               </Typography>
             )}
+            {clienteSel && (
+              <Typography variant="body2" color="text.secondary">
+                {clienteSel.email ? `Email: ${clienteSel.email}` : 'Email: —'}
+              </Typography>
+            )}
+            {clienteSel && (
+              <Typography variant="body2" color="text.secondary">
+                {clienteSel.nit ? `NIT: ${clienteSel.nit}` : 'NIT: —'}
+              </Typography>
+            )}
           </Box>
           <Table size="small">
             <TableHead>
@@ -217,6 +229,12 @@ export default function Clientes() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Cliente: {ordenSel?.cliente?.nombre} — {ordenSel?.cliente?.telefono}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Email: {ordenSel?.cliente?.email || '—'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              NIT: {ordenSel?.cliente?.nit || '—'}
             </Typography>
           </Stack>
 
