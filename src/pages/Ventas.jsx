@@ -797,26 +797,30 @@ export default function Inventory() {
               />
             )}
 
-            <TextField
-              label="Correo electrónico"
-              value={cliente.email}
-              onChange={(e) =>
-                setCliente(prev => ({ ...prev, email: e.target.value }))
-              }
-              fullWidth
-              type="email"
-              placeholder="cliente@correo.com"
-            />
+            {!esClienteExistente && (
+              <TextField
+                label="Correo electrónico"
+                value={cliente.email}
+                onChange={(e) =>
+                  setCliente(prev => ({ ...prev, email: e.target.value }))
+                }
+                fullWidth
+                type="email"
+                placeholder="cliente@correo.com"
+              />
+            )}
 
-            <TextField
-              label="NIT"
-              value={cliente.nit}
-              onChange={(e) =>
-                setCliente(prev => ({ ...prev, nit: e.target.value }))
-              }
-              fullWidth
-              placeholder="CF o número de NIT"
-            />
+            {!esClienteExistente && (
+              <TextField
+                label="NIT"
+                value={cliente.nit}
+                onChange={(e) =>
+                  setCliente(prev => ({ ...prev, nit: e.target.value }))
+                }
+                fullWidth
+                placeholder="CF o número de NIT"
+              />
+            )}
             {/* <TextField
               autoFocus
               select
