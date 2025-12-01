@@ -93,7 +93,7 @@ const parseTicketDate = (...dates) => {
 const formatTicketDate = (date) => {
   if (!date) return ''
   // Ajuste manual de -5 horas por desfase reportado en impresión
-  const adjusted = new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  const adjusted = new Date(date.getTime() - 6 * 60 * 60 * 1000)
   try {
     return new Intl.DateTimeFormat('es-GT', {
       timeZone: 'America/Guatemala',
