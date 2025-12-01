@@ -344,9 +344,34 @@ export default function Inventory() {
 
 
   const addToCart = (prod) => {
+    const rawStock = prod.cantidad ?? prod.stock
+    const stock = typeof rawStock === 'number' ? rawStock : Number(rawStock) || 0
+    const unlimited = stock >= 9999
+
     setCart(prev => {
       const existing = prev.find(p => p.id === prod.id)
-      if (existing) return prev.map(p => p.id === prod.id ? { ...p, qty: p.qty + 1 } : p)
+
+      const currentQty = existing ? existing.qty : 0
+      const nextQty = currentQty + 1
+
+      if (!unlimited) {
+        if (stock <= 0) {
+          setSnack({ open: true, msg: 'No hay stock disponible para este producto', severity: 'warning' })
+          return prev
+        }
+        if (nextQty > stock) {
+          setSnack({
+            open: true,
+            msg: `Solo hay ${stock} en stock`,
+            severity: 'warning',
+          })
+          return prev
+        }
+      }
+
+      if (existing) {
+        return prev.map(p => p.id === prod.id ? { ...p, qty: nextQty } : p)
+      }
       return [...prev, { ...prod, qty: 1 }]
     })
   }
