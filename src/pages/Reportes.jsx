@@ -104,19 +104,25 @@ export default function Reportes() {
       if (!productoId) continue
 
       const qty = getItemQty(it)
-      const cantidadActual = Number(it.producto?.cantidad ?? 0)
-      const nuevaCantidad = Number.isFinite(cantidadActual)
-        ? cantidadActual + qty
-        : qty
+      // Obtener stock actual desde backend para evitar usar valores viejos del item
+      const getRes = await fetch(`${API_BASE_URL}/productos/${productoId}`)
+      if (!getRes.ok) {
+        const msg = await getRes.text()
+        throw new Error(msg || `No se pudo leer stock del producto ${productoId}`)
+      }
+      const productoActual = await getRes.json()
+      const cantidadActual = Number(productoActual?.cantidad ?? 0)
+      const stockActual = Number.isFinite(cantidadActual) ? cantidadActual : 0
+      const nuevaCantidad = stockActual + qty
 
-      const res = await fetch(`${API_BASE_URL}/productos/${productoId}`, {
+      const putRes = await fetch(`${API_BASE_URL}/productos/${productoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cantidad: nuevaCantidad }),
       })
 
-      if (!res.ok) {
-        const msg = await res.text()
+      if (!putRes.ok) {
+        const msg = await putRes.text()
         throw new Error(msg || `Error al devolver inventario del producto ${productoId}`)
       }
     }
