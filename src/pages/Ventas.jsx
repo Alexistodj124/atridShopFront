@@ -46,6 +46,64 @@ const tipoPOS = [
   { id: 'prod', label: 'Productos' },
 ]
 
+const parseTicketDate = (...dates) => {
+  const normalize = (value) => {
+    if (!value) return null
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+
+    // Numbers: allow seconds (10 digits) or ms (13 digits)
+    if (typeof value === 'number') {
+      const ms = value < 1e11 ? value * 1000 : value
+      const d = new Date(ms)
+      return Number.isNaN(d.getTime()) ? null : d
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (!trimmed) return null
+      const num = Number(trimmed)
+      if (!Number.isNaN(num)) {
+        const ms = num < 1e11 ? num * 1000 : num
+        const d = new Date(ms)
+        if (!Number.isNaN(d.getTime())) return d
+      }
+
+      // Try ISO-ish strings; add "T" and optional "Z" if missing
+      const candidates = [
+        trimmed,
+        trimmed.replace(' ', 'T'),
+        `${trimmed.replace(' ', 'T')}Z`,
+      ]
+      for (const candidate of candidates) {
+        const d = new Date(candidate)
+        if (!Number.isNaN(d.getTime())) return d
+      }
+    }
+
+    return null
+  }
+
+  for (const d of dates) {
+    const parsed = normalize(d)
+    if (parsed) return parsed
+  }
+  return null
+}
+
+const formatTicketDate = (date) => {
+  if (!date) return ''
+  // Ajuste manual de -5 horas por desfase reportado en impresión
+  const adjusted = new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  try {
+    return new Intl.DateTimeFormat('es-GT', {
+      timeZone: 'America/Guatemala',
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    }).format(adjusted)
+  } catch {
+    return adjusted.toLocaleString()
+  }
+}
 
 
 export default function Inventory() {
@@ -215,6 +273,15 @@ export default function Inventory() {
     const printWindow = window.open('', '', 'width=400,height=600')
     if (!printWindow) return // popup bloqueado
 
+    const ticketDate = parseTicketDate(
+      ticket.fecha,
+      ticket.fecha_creacion,
+      ticket.created_at,
+      ticket.createdAt,
+      ticket.created
+    )
+    const ticketDateText = formatTicketDate(ticketDate)
+
     printWindow.document.write(`
       <html>
         <head>
@@ -243,16 +310,16 @@ export default function Inventory() {
           </style>
         </head>
         <body>
-          <div class="ticket" style="padding:4px;">
-            <div style="text-align:center;margin-bottom:4px;">
-              <div style="font-weight:bold;">AM BOUTIQUE</div>
-              <div>Ticket: ${ticket.codigo}</div>
-              <div>${new Date(ticket.fecha).toLocaleString()}</div>
-            </div>
-            <hr />
-            <div style="margin-bottom:4px;">
-              <div>Cliente: ${ticket.cliente?.nombre || ''}</div>
-              <div>Tel: ${ticket.cliente?.telefono || ''}</div>
+            <div class="ticket" style="padding:4px;">
+              <div style="text-align:center;margin-bottom:4px;">
+                <div style="font-weight:bold;">AM BOUTIQUE</div>
+                <div>Ticket: ${ticket.codigo}</div>
+                <div>${ticketDateText}</div>
+              </div>
+              <hr />
+              <div style="margin-bottom:4px;">
+                <div>Cliente: ${ticket.cliente?.nombre || ''}</div>
+                <div>Tel: ${ticket.cliente?.telefono || ''}</div>
             </div>
             <hr />
             ${itemsHtml}
@@ -336,7 +403,7 @@ export default function Inventory() {
     const printWindow = window.open('', '', 'width=400,height=600')
     // Si el navegador bloquea el popup, printWindow será null
     // Igual seguimos con la creación de la orden; sólo que no imprimirá.
-    
+
     // 1) Cliente: existente o nuevo
     let clientePayload
     const nombreTrim = (cliente.nombre || '').trim()
@@ -369,7 +436,6 @@ export default function Inventory() {
     // 3) Body para /ordenes
     const body = {
       codigo: `ORD-${Date.now()}`,
-      fecha: new Date().toISOString(),
       cliente: clientePayload,
       items: itemsPayload,
       descuento: discountValue,
@@ -406,7 +472,15 @@ export default function Inventory() {
 
       // ==== Construimos el HTML del ticket ====
       const ticketCodigo = data.codigo || body.codigo
-      const ticketFecha  = data.fecha || body.fecha
+      const ticketFecha = parseTicketDate(
+        data.fecha,
+        data.fecha_creacion,
+        data.created_at,
+        data.createdAt,
+        data.created,
+        Date.now()
+      )
+      const ticketFechaTexto = formatTicketDate(ticketFecha)
 
       const ticketClienteNombre   = clientePayload.nombre ?? clienteSeleccionado?.nombre ?? ''
       const ticketClienteTelefono = clientePayload.telefono ?? clienteSeleccionado?.telefono ?? ''
@@ -463,7 +537,7 @@ export default function Inventory() {
               <div style="text-align:center;margin-bottom:4px">
                 <div style="font-weight:bold">AM Boutique</div>
                 <div>Ticket: ${ticketCodigo}</div>
-                <div>${new Date(ticketFecha).toLocaleString()}</div>
+                <div>${ticketFechaTexto}</div>
               </div>
               <hr/>
               <div style="margin-bottom:4px">
