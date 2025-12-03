@@ -60,22 +60,62 @@ function calcGanancia(items = [], descuento = 0) {
   return subtotal - costoTotal - desc
 }
 
+function calcGananciaSinDescuento(items = []) {
+  const subtotal = calcSubtotal(items)
+  const costoTotal = calcCostoTotal(items)
+  return subtotal - costoTotal
+}
+
 export default function Reportes() {
   const [ordenSel, setOrdenSel] = React.useState(null)
   const [ordenes, setOrdenes] = React.useState([])
-    const [range, setRange] = React.useState([
+  const [range, setRange] = React.useState([
     dayjs().startOf('month'),
     dayjs().endOf('day'),
   ])
   const [deletingId, setDeletingId] = React.useState(null)
+  const [tiendaFiltro, setTiendaFiltro] = React.useState('')
+
+  const tiendasDisponibles = React.useMemo(() => {
+    const map = new Map()
+    ordenes.forEach((orden) => {
+      orden?.items?.forEach((item) => {
+        const tiendaId = item?.producto?.tienda_id ?? item?.tienda_id
+        const tiendaNombre = item?.producto?.tienda ?? item?.tienda_nombre
+        if (tiendaId == null) return
+        if (!map.has(tiendaId)) {
+          map.set(tiendaId, {
+            id: tiendaId,
+            nombre: tiendaNombre || `Tienda #${tiendaId}`,
+          })
+        }
+      })
+    })
+    return Array.from(map.values())
+  }, [ordenes])
 
   const filtered = React.useMemo(() => {
   // usa SOLO backend
     const source = ordenes
   
     // si no hay empleada seleccionada, devuelve todas  
+    if (!tiendaFiltro) return source
+
+    const matchesTienda = (item) => {
+      const tiendaId = item?.producto?.tienda_id ?? item?.tienda_id
+      return tiendaId != null && String(tiendaId) === String(tiendaFiltro)
+    }
+
+    // Devuelve las órdenes con solo los items de la tienda seleccionada.
+    // Si una orden no tiene items de esa tienda, se excluye.
     return source
-  }, [ordenes])
+      .map((orden) => {
+        const itemsFiltrados = (orden?.items || []).filter(matchesTienda)
+        if (!itemsFiltrados.length) return null
+        return { ...orden, items: itemsFiltrados }
+      })
+      .filter(Boolean)
+  }, [ordenes, tiendaFiltro])
 
 
   // 🔹 GET /ordenes?inicio=...&fin=...
@@ -156,10 +196,18 @@ export default function Reportes() {
     0
   )
 
-  const gananciaPeriodo = filtered.reduce(
-    (acc, o) => acc + calcGanancia(o.items || [], getOrdenDescuento(o)),
-    0
-  )
+  const gananciaPeriodo = React.useMemo(() => {
+    if (!tiendaFiltro) {
+      return filtered.reduce(
+        (acc, o) => acc + calcGanancia(o.items || [], getOrdenDescuento(o)),
+        0
+      )
+    }
+    return filtered.reduce(
+      (acc, o) => acc + calcGananciaSinDescuento(o.items || []),
+      0
+    )
+  }, [filtered, tiendaFiltro])
 
   const [porcentajeComision, setPorcentajeComision] = React.useState(0);
 
@@ -211,6 +259,22 @@ export default function Reportes() {
               localeText={{ start: 'Desde', end: 'Hasta' }}
             />
 
+            <TextField
+              select
+              size="small"
+              label="Tienda"
+              value={tiendaFiltro}
+              onChange={(e) => setTiendaFiltro(e.target.value)}
+              sx={{ minWidth: 200 }}
+            >
+              <MenuItem value="">Todas las tiendas</MenuItem>
+              {tiendasDisponibles.map((tienda) => (
+                <MenuItem key={tienda.id} value={tienda.id}>
+                  {tienda.nombre}
+                </MenuItem>
+              ))}
+            </TextField>
+
             <Chip
               label={`Total en el período: Q ${totalPeriodo.toFixed(2)}`}
               color="primary"
@@ -221,9 +285,14 @@ export default function Reportes() {
               color="success"
               sx={{ fontWeight: 600 }}
             />
+            {tiendaFiltro && (
+              <Typography variant="caption" color="text.secondary">
+                Descuentos no tomados en cuenta
+              </Typography>
+            )}
           </Stack>
 
-          
+
         </Paper>
 
         <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
