@@ -75,24 +75,7 @@ export default function Reportes() {
   ])
   const [deletingId, setDeletingId] = React.useState(null)
   const [tiendaFiltro, setTiendaFiltro] = React.useState('')
-
-  const tiendasDisponibles = React.useMemo(() => {
-    const map = new Map()
-    ordenes.forEach((orden) => {
-      orden?.items?.forEach((item) => {
-        const tiendaId = item?.producto?.tienda_id ?? item?.tienda_id
-        const tiendaNombre = item?.producto?.tienda ?? item?.tienda_nombre
-        if (tiendaId == null) return
-        if (!map.has(tiendaId)) {
-          map.set(tiendaId, {
-            id: tiendaId,
-            nombre: tiendaNombre || `Tienda #${tiendaId}`,
-          })
-        }
-      })
-    })
-    return Array.from(map.values())
-  }, [ordenes])
+  const [tiendas, setTiendas] = React.useState([])
 
   const filtered = React.useMemo(() => {
   // usa SOLO backend
@@ -134,6 +117,23 @@ export default function Reportes() {
       console.error(err)
     }
   }
+
+  // 🔹 GET /tiendas
+  React.useEffect(() => {
+    const cargarTiendas = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/tiendas`)
+        if (!res.ok) throw new Error('Error al obtener tiendas')
+
+        const data = await res.json()
+        setTiendas(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    cargarTiendas()
+  }, [])
 
   const restockOrden = async (orden) => {
     if (!orden?.items?.length) return
@@ -268,7 +268,7 @@ export default function Reportes() {
               sx={{ minWidth: 200 }}
             >
               <MenuItem value="">Todas las tiendas</MenuItem>
-              {tiendasDisponibles.map((tienda) => (
+              {tiendas.map((tienda) => (
                 <MenuItem key={tienda.id} value={tienda.id}>
                   {tienda.nombre}
                 </MenuItem>
